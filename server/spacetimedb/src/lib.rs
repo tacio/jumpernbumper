@@ -105,6 +105,7 @@ pub struct RoomMember {
     pub ready: bool,
     pub kills: u32,
     pub deaths: u32,
+    #[default(false)]
     pub is_bot: bool,
 }
 
@@ -131,6 +132,7 @@ pub struct MatchBunny {
     pub prev_jump: bool,
     pub input_bits: u8,
     pub last_seq: u32,
+    #[default(false)]
     pub is_bot: bool,
 }
 

@@ -25,14 +25,25 @@ SCHEMAS_PATH = pathlib.Path(__file__).resolve().parent.parent / "shared" / "tabl
 with SCHEMAS_PATH.open("r", encoding="utf-8") as f:
     SCHEMA_DOC = json.load(f)
 
+# Server views (subscription names) -> local mirror names used by the assertions below.
 TABLE_SCHEMAS: dict[str, list[str]] = SCHEMA_DOC["tables"]
-TABLE_PK: dict[str, str] = {
+VIEW_TO_MIRROR: dict[str, str] = {
+    "my_player": "player",
+    "my_room": "room",
+    "my_room_member": "room_member",
+    "my_match_bunny": "match_bunny",
+    "my_kill_event": "kill_event",
+    "public_room": "public_room",
+}
+MIRROR_PK: dict[str, str] = {
     "player": "identity",
     "room": "id",
     "room_member": "identity",
     "match_bunny": "identity",
     "kill_event": "id",
+    "public_room": "id",
 }
+assert set(TABLE_SCHEMAS) == set(VIEW_TO_MIRROR), f"schema/view mismatch: {sorted(TABLE_SCHEMAS)}"
 
 INPUT_LEFT = 1
 INPUT_RIGHT = 2
@@ -70,7 +81,7 @@ class StdbClient:
         self.ws_url = ws_url
         self.ws = None
         self.identity: str = ""
-        self.tables: dict[str, dict] = {t: {} for t in TABLE_SCHEMAS}
+        self.tables: dict[str, dict] = {m: {} for m in MIRROR_PK}
         self._next_req_id = 1
         self._pending: dict[int, asyncio.Future] = {}
         self._initial_sub_future: asyncio.Future | None = None
@@ -162,10 +173,11 @@ class StdbClient:
     def _apply_tables(self, raw_tables: list[dict]) -> None:
         for table in raw_tables:
             tname = table.get("table_name")
-            if tname not in self.tables:
-                continue
-            pk = TABLE_PK[tname]
-            store = self.tables[tname]
+            mirror = VIEW_TO_MIRROR.get(tname)
+            if mirror is None:
+                raise AssertionError(f"{self.name}: received rows for non-view table {tname!r}")
+            pk = MIRROR_PK[mirror]
+            store = self.tables[mirror]
             for upd in table.get("updates", []):
                 for raw_del in upd.get("deletes", []):
                     row = decode_row(tname, raw_del)
@@ -281,8 +293,10 @@ async def run_suite(ws_url: str) -> None:
 
         b = await spawn("B")
         await b.call("set_nickname", ["JiffyPro"])
-        # B sees Public Meadow in its subscription mirror.
-        await b.wait_for(lambda cl: pub_id in cl.tables["room"], desc="B sees public room")
+        # B sees Public Meadow in the public room listing (with member count, without a code).
+        listing = await b.wait_for(lambda cl: cl.tables["public_room"].get(pub_id), desc="B sees public room")
+        assert listing["member_count"] == 1 and "code" not in listing
+        assert not b.tables["room"], "B must not see any room row before joining one"
         await b.call("join_public_room", [pub_id])
         b_mem = await b.wait_for(lambda cl: cl.tables["room_member"].get(cl.identity), desc="B room_member")
         assert b_mem["room_id"] == pub_id and b_mem["slot"] == 1 and b_mem["ready"] is False
@@ -298,6 +312,11 @@ async def run_suite(ws_url: str) -> None:
         priv_id = priv_room["id"]
         priv_code = priv_room["code"]
         assert priv_room["is_public"] is False
+
+        # Private room code and membership must not leak to clients outside the room.
+        assert priv_id not in b.tables["room"] and priv_id not in b.tables["public_room"]
+        assert all(m["room_id"] == pub_id for m in b.tables["room_member"].values())
+        assert set(b.tables["player"]) == {b.identity}, "Clients must only see their own player row"
 
         d = await spawn("D")
         await d.call("set_nickname", ["MijjiKid"])
@@ -332,7 +351,7 @@ async def run_suite(ws_url: str) -> None:
         await c.call("leave_room")
         await d.call("leave_room")
         await e.call("leave_room")
-        await a.wait_for(lambda cl: priv_id not in cl.tables["room"], desc="Secret Pond deleted")
+        await g.call_expect_fail("join_room_by_code", [priv_code], "not found")
 
         # 4. Host-only validation, settings validation, & host migration on disconnect
         print("[phase2_e2e] 4. Testing host-only guards & host migration on disconnect...")
@@ -352,8 +371,6 @@ async def run_suite(ws_url: str) -> None:
             desc="Host migration to B",
         )
         assert a_identity not in b.tables["room_member"]
-        assert b.tables["player"][a_identity]["connected"] is False
-        assert b.tables["player"][a_identity]["room_id"] == 0
 
         # 5. Lock-on-start, live physics, stomp KillEvent, Kill Limit victory -> return_to_lobby
         print("[phase2_e2e] 5. Testing lock-on-start, live stomp KillEvent, & Kill Limit victory...")
@@ -372,6 +389,8 @@ async def run_suite(ws_url: str) -> None:
         bunnies = get_room_bunnies(b, pub_id)
         assert len(bunnies) == 2
         assert all(bn["invuln_ticks"] == 15 for bn in bunnies)
+        await g.wait_for(lambda cl: pub_id not in cl.tables["public_room"], desc="InProgress room leaves public listing")
+        assert not g.tables["match_bunny"], "Match traffic must be scoped to room members"
 
         # Late join rejected while InProgress
         await g.call_expect_fail("join_public_room", [pub_id], "locked")

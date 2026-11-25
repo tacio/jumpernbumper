@@ -2,30 +2,19 @@ extends SceneTree
 
 ## Headless Phase 2 smoke test for Godot 4.7.2 + SpacetimeWire.gd.
 ##
-## Registers all 5 Phase 2 table schemas, subscribes, calls `set_nickname`,
-## `create_room`, verifies decoded `room` and `room_member` rows from
-## `TransactionUpdate`, calls `leave_room`, and exits 0.
+## Registers the client-visible view schemas from `res://data/table_schemas.json`,
+## subscribes, calls `set_nickname`, `create_room`, verifies the decoded `my_room`
+## row from `TransactionUpdate`, calls `leave_room`, and exits 0.
 
 const SpacetimeWire = preload("res://autoload/SpacetimeWire.gd")
 
 const DEFAULT_URL := "ws://127.0.0.1:3100/v1/database/jumpernbumper/subscribe"
 const TIMEOUT_MS := 10000
 
-const TABLE_SCHEMAS := {
-	"player": ["identity", "nickname", "connected", "room_id"],
-	"room": [
-		"id", "code", "name", "is_public", "host_identity", "status",
-		"win_mode", "win_target", "mut_low_gravity", "mut_pogo", "mut_jetpack",
-		"gore_enabled", "tick_count", "elapsed_ms", "winner_slot"
-	],
-	"room_member": ["identity", "room_id", "slot", "nickname", "ready", "kills", "deaths"],
-	"match_bunny": [
-		"identity", "room_id", "slot", "x", "y", "vx", "vy", "facing",
-		"alive", "respawn_ticks", "invuln_ticks", "on_ground", "in_water",
-		"on_ice", "prev_jump", "input_bits", "last_seq"
-	],
-	"kill_event": ["id", "room_id", "tick", "killer_slot", "victim_slot", "x", "y"],
-}
+const SCHEMAS_PATH := "res://data/table_schemas.json"
+const VIEW_NAMES: Array[String] = [
+	"my_player", "my_room", "my_room_member", "my_match_bunny", "my_kill_event", "public_room",
+]
 
 enum Step {
 	CONNECTING,
@@ -48,9 +37,12 @@ func _init() -> void:
 	var url := _parse_url_arg()
 
 	_wire = SpacetimeWire.new()
-	for table_name in TABLE_SCHEMAS.keys():
-		var cols: Array = TABLE_SCHEMAS[table_name]
-		_wire.register_table(table_name, PackedStringArray(cols))
+	var schemas: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SCHEMAS_PATH)).get("tables", {})
+	for view_name in VIEW_NAMES:
+		if not schemas.has(view_name):
+			_fail("Missing schema for view %s in %s" % [view_name, SCHEMAS_PATH])
+			return
+		_wire.register_table(view_name, PackedStringArray(schemas[view_name]))
 
 	_wire.connected.connect(_on_connected)
 	_wire.identity_received.connect(_on_identity_received)
@@ -94,18 +86,15 @@ func _on_identity_received(identity_hex: String, _token: String) -> void:
 		_fail("Empty identity")
 		return
 	_step = Step.SUBSCRIBING
-	_wire.subscribe(PackedStringArray([
-		"SELECT * FROM player",
-		"SELECT * FROM room",
-		"SELECT * FROM room_member",
-		"SELECT * FROM match_bunny",
-		"SELECT * FROM kill_event",
-	]))
+	var queries := PackedStringArray()
+	for view_name in VIEW_NAMES:
+		queries.append("SELECT * FROM %s" % view_name)
+	_wire.subscribe(queries)
 
 
 func _on_initial_subscription(tables: Dictionary, _request_id: int) -> void:
-	if not tables.has("player"):
-		_fail("Missing player table in InitialSubscription (got keys=%s)" % str(tables.keys()))
+	if not tables.has("my_player"):
+		_fail("Missing my_player view in InitialSubscription (got keys=%s)" % str(tables.keys()))
 		return
 	_step = Step.CREATING_ROOM
 	_wire.call_reducer("set_nickname", ["GodotSmoke"])
@@ -115,9 +104,9 @@ func _on_initial_subscription(tables: Dictionary, _request_id: int) -> void:
 func _on_transaction_committed(tables: Dictionary, reducer_call: Dictionary) -> void:
 	var req_id := int(reducer_call.get("request_id", -1))
 	if _step == Step.CREATING_ROOM and req_id == _create_req_id:
-		var room_inserts: Array = tables.get("room", {}).get("inserts", [])
+		var room_inserts: Array = tables.get("my_room", {}).get("inserts", [])
 		if room_inserts.is_empty():
-			_fail("create_room did not return room insert")
+			_fail("create_room did not return my_room insert")
 			return
 		var room_row: Dictionary = room_inserts[0]
 		_created_room_id = int(room_row.get("id", 0))

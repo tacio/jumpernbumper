@@ -69,8 +69,7 @@ func refresh() -> void:
 	for r in rooms:
 		var room: Dictionary = r
 		var room_id := int(room.get("id", 0))
-		var members: Array = client.get_room_members(room_id)
-		var count := members.size()
+		var count := int(room.get("member_count", 0))
 
 		var card := PanelContainer.new()
 		card.add_theme_stylebox_override("panel", RetroUI.make_card_style())
@@ -85,11 +84,6 @@ func refresh() -> void:
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_lbl.clip_text = true
 		row.add_child(name_lbl)
-
-		var code_lbl := Label.new()
-		code_lbl.text = "[%s]" % str(room.get("code", "?????"))
-		code_lbl.add_theme_color_override("font_color", Color(0.62, 0.88, 0.98, 1.0))
-		row.add_child(code_lbl)
 
 		var rule_lbl := Label.new()
 		var win_mode := int(room.get("win_mode", 0))

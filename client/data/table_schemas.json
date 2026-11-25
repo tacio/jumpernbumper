@@ -1,12 +1,12 @@
 {
   "tables": {
-    "player": [
+    "my_player": [
       "identity",
       "nickname",
       "connected",
       "room_id"
     ],
-    "room": [
+    "my_room": [
       "id",
       "code",
       "name",
@@ -23,7 +23,7 @@
       "elapsed_ms",
       "winner_slot"
     ],
-    "room_member": [
+    "my_room_member": [
       "identity",
       "room_id",
       "slot",
@@ -33,7 +33,7 @@
       "deaths",
       "is_bot"
     ],
-    "match_bunny": [
+    "my_match_bunny": [
       "identity",
       "room_id",
       "slot",
@@ -53,7 +53,7 @@
       "last_seq",
       "is_bot"
     ],
-    "kill_event": [
+    "my_kill_event": [
       "id",
       "room_id",
       "tick",
@@ -61,6 +61,13 @@
       "victim_slot",
       "x",
       "y"
+    ],
+    "public_room": [
+      "id",
+      "name",
+      "win_mode",
+      "win_target",
+      "member_count"
     ]
   },
   "enums": {

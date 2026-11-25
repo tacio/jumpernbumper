@@ -2,9 +2,11 @@ extends Node
 
 ## Authoritative SpacetimeDB client singleton for Jumper 'n Bumper.
 ##
-## Wraps `SpacetimeWire`, mirrors all 5 public server tables (`player`, `room`,
-## `room_member`, `match_bunny`, `kill_event`) using schemas from
-## `res://data/table_schemas.json`, exposes query helpers, and provides typed
+## Wraps `SpacetimeWire`, mirrors the server's caller-scoped views (`my_player`,
+## `my_room`, `my_room_member`, `my_match_bunny`, `my_kill_event`) plus the
+## `public_room` lobby listing, using schemas from `res://data/table_schemas.json`.
+## Base tables are private on the server, so a client only ever holds its own
+## player row and the state of the room it is in. Exposes query helpers and typed
 ## reducer RPC methods.
 
 const SpacetimeWireScript = preload("res://autoload/SpacetimeWire.gd")
@@ -27,11 +29,12 @@ const INPUT_JUMP := 4
 const BUNNY_NAMES: Array[String] = ["Dott", "Jiffy", "Fizz", "Mijji"]
 
 const TABLE_NAMES: Array[String] = [
-	"player",
-	"room",
-	"room_member",
-	"match_bunny",
-	"kill_event",
+	"my_player",
+	"my_room",
+	"my_room_member",
+	"my_match_bunny",
+	"my_kill_event",
+	"public_room",
 ]
 
 signal connected_and_ready()
@@ -140,7 +143,7 @@ func get_my_player() -> Dictionary:
 	var id := my_identity()
 	if id.is_empty():
 		return {}
-	var players: Dictionary = _tables.get("player", {})
+	var players: Dictionary = _tables.get("my_player", {})
 	if not players.has(id):
 		return {}
 	return (players[id] as Dictionary).duplicate()
@@ -155,11 +158,11 @@ func get_my_room() -> Dictionary:
 	return get_room_by_id(room_id)
 
 
-## Returns a `room` row by `room_id`, or an empty Dictionary.
+## Returns the caller's `room` row if its id is `room_id`, or an empty Dictionary.
 func get_room_by_id(room_id: int) -> Dictionary:
 	if room_id <= 0:
 		return {}
-	var rooms: Dictionary = _tables.get("room", {})
+	var rooms: Dictionary = _tables.get("my_room", {})
 	if not rooms.has(room_id):
 		return {}
 	return (rooms[room_id] as Dictionary).duplicate()
@@ -170,32 +173,32 @@ func get_my_room_member() -> Dictionary:
 	var id := my_identity()
 	if id.is_empty():
 		return {}
-	var members: Dictionary = _tables.get("room_member", {})
+	var members: Dictionary = _tables.get("my_room_member", {})
 	if not members.has(id):
 		return {}
 	return (members[id] as Dictionary).duplicate()
 
 
-## Returns all public rooms currently in `Waiting` status, sorted by room id ascending.
+## Returns `public_room` listings (`id`, `name`, `win_mode`, `win_target`,
+## `member_count`) for public rooms in `Waiting` status, sorted by room id ascending.
 func get_public_waiting_rooms() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	var rooms: Dictionary = _tables.get("room", {})
+	var rooms: Dictionary = _tables.get("public_room", {})
 	for r in rooms.values():
 		var row: Dictionary = r
-		if bool(row.get("is_public", false)) and int(row.get("status", -1)) == STATUS_WAITING:
-			result.append(row.duplicate())
+		result.append(row.duplicate())
 	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a.get("id", 0)) < int(b.get("id", 0))
 	)
 	return result
 
 
-## Returns all `room_member` rows for `room_id`, sorted by bunny slot ascending.
+## Returns `room_member` rows for `room_id` (only the caller's room is visible), sorted by bunny slot ascending.
 func get_room_members(room_id: int) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if room_id <= 0:
 		return result
-	var members: Dictionary = _tables.get("room_member", {})
+	var members: Dictionary = _tables.get("my_room_member", {})
 	for m in members.values():
 		var row: Dictionary = m
 		if int(row.get("room_id", 0)) == room_id:
@@ -211,7 +214,7 @@ func get_room_bunnies(room_id: int) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if room_id <= 0:
 		return result
-	var bunnies: Dictionary = _tables.get("match_bunny", {})
+	var bunnies: Dictionary = _tables.get("my_match_bunny", {})
 	for b in bunnies.values():
 		var row: Dictionary = b
 		if int(row.get("room_id", 0)) == room_id:
@@ -419,7 +422,7 @@ func _on_transaction_committed(tables_by_name: Dictionary, _reducer_call: Dictio
 				if pk != null:
 					mirror[pk] = row
 					any_changed = true
-					if tname == "kill_event":
+					if tname == "my_kill_event":
 						new_kills.append((row as Dictionary).duplicate())
 
 	for ev in new_kills:
@@ -458,10 +461,10 @@ func _handle_disconnect(reason: String) -> void:
 
 func _extract_pk(table_name: String, row: Dictionary) -> Variant:
 	match table_name:
-		"player", "room_member", "match_bunny":
+		"my_player", "my_room_member", "my_match_bunny":
 			var id_str := str(row.get("identity", ""))
 			return id_str if not id_str.is_empty() else null
-		"room", "kill_event":
+		"my_room", "my_kill_event", "public_room":
 			if not row.has("id"):
 				return null
 			return int(row["id"])

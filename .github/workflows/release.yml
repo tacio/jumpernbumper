@@ -96,8 +96,7 @@ jobs:
           if [ "${{ matrix.target }}" = "linux" ]; then
             tar -C client/build/linux -czf "dist/${{ matrix.artifact_name }}.tar.gz" .
           elif [ "${{ matrix.target }}" = "windows" ]; then
-            (cd client/build/windows && zip -r "../../dist/${{ matrix.artifact_name }}.zip" .)
-            mv client/dist/${{ matrix.artifact_name }}.zip dist/ 2>/dev/null || true
+            (cd client/build/windows && zip -r "../../../dist/${{ matrix.artifact_name }}.zip" .)
           elif [ "${{ matrix.target }}" = "macos" ]; then
             cp client/build/macos/jumpernbumper.zip "dist/${{ matrix.artifact_name }}.zip"
           fi

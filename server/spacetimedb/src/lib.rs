@@ -1,9 +1,15 @@
 //! Authoritative SpacetimeDB v2.16.3 multiplayer backend for Jumper 'n Bumper.
 //!
-//! Public tables use flat schemas without `Option` fields so `v1.json.spacetimedb`
+//! All tables are private. Clients subscribe only to the caller-scoped views
+//! (`my_player`, `my_room`, `my_room_member`, `my_match_bunny`, `my_kill_event`)
+//! and the code-free `public_room` lobby listing, so private room codes never leave
+//! the server except to that room's members, and 30 Hz match updates only reach the
+//! players in that match. Rows are flat (no `Option` fields) so `v1.json.spacetimedb`
 //! array/object decoding in GDScript (`SpacetimeWire.gd`) is simple and unambiguous.
 //!
-//! ## Public Table Column Order (for `TransactionUpdate` positional array decoding)
+//! ## View Column Order (for `TransactionUpdate` positional array decoding; mirrored in
+//! `shared/table_schemas.json` under the `my_*` view names)
+//! 0. `public_room`: `["id", "name", "win_mode", "win_target", "member_count"]`
 //! 1. `player`: `["identity", "nickname", "connected", "room_id"]`
 //! 2. `room`: `["id", "code", "name", "is_public", "host_identity", "status", "win_mode", "win_target", "mut_low_gravity", "mut_pogo", "mut_jetpack", "gore_enabled", "tick_count", "elapsed_ms", "winner_slot"]`
 //! 3. `room_member`: `["identity", "room_id", "slot", "nickname", "ready", "kills", "deaths", "is_bot"]`
@@ -18,7 +24,7 @@
 //! - `MatchBunny.input_bits`: `1 = Left`, `2 = Right`, `4 = Jump`
 
 use spacetimedb::rand::Rng;
-use spacetimedb::{Identity, ReducerContext, ScheduleAt, Table, TimeDuration};
+use spacetimedb::{Identity, ReducerContext, ScheduleAt, SpacetimeType, Table, TimeDuration, ViewContext};
 
 /// Tick interval in milliseconds (~30 Hz).
 const TICK_INTERVAL_MS: u64 = 33;
@@ -51,7 +57,7 @@ const ROOM_CODE_LEN: usize = 5;
 const CODE_ALPHABET: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 /// Connected/known player profile and active room membership pointer (`0` = none).
-#[spacetimedb::table(accessor = player, public)]
+#[spacetimedb::table(accessor = player)]
 #[derive(Clone, Debug)]
 pub struct Player {
     #[primary_key]
@@ -62,7 +68,7 @@ pub struct Player {
 }
 
 /// Lobby and match state for a game room (`id >= 1`; `0` is reserved as sentinel "no room").
-#[spacetimedb::table(accessor = room, public)]
+#[spacetimedb::table(accessor = room)]
 #[derive(Clone, Debug)]
 pub struct Room {
     #[primary_key]
@@ -87,7 +93,7 @@ pub struct Room {
 }
 
 /// Player membership, selected bunny slot (`0..=3`), ready state, and match scoreboard.
-#[spacetimedb::table(accessor = room_member, public)]
+#[spacetimedb::table(accessor = room_member)]
 #[derive(Clone, Debug)]
 pub struct RoomMember {
     #[primary_key]
@@ -103,7 +109,7 @@ pub struct RoomMember {
 }
 
 /// Authoritative physics state for an active bunny in an `InProgress` room.
-#[spacetimedb::table(accessor = match_bunny, public)]
+#[spacetimedb::table(accessor = match_bunny)]
 #[derive(Clone, Debug)]
 pub struct MatchBunny {
     #[primary_key]
@@ -129,7 +135,7 @@ pub struct MatchBunny {
 }
 
 /// Discrete stomp kill event emitted during `match_tick` for kill feed and VFX/SFX.
-#[spacetimedb::table(accessor = kill_event, public)]
+#[spacetimedb::table(accessor = kill_event)]
 #[derive(Clone, Debug)]
 pub struct KillEvent {
     #[primary_key]
@@ -151,6 +157,94 @@ pub struct MatchTickSchedule {
     #[auto_inc]
     pub scheduled_id: u64,
     pub scheduled_at: ScheduleAt,
+}
+
+// ---------------------------------------------------------------------------
+// Client-visible views
+//
+// All base tables are private. Clients only ever see their own `Player` row,
+// their current room (including its join code), that room's members, bunnies and
+// kill events, plus a code-free listing of public rooms waiting for players.
+// This keeps private room codes secret and scopes 30 Hz match traffic to the
+// players actually in that match.
+// ---------------------------------------------------------------------------
+
+/// Lobby browser entry for a public `Waiting` room (no host identity exposed).
+#[derive(SpacetimeType, Clone, Debug, PartialEq)]
+pub struct PublicRoom {
+    pub id: u64,
+    pub name: String,
+    pub win_mode: u8,
+    pub win_target: u32,
+    pub member_count: u8,
+}
+
+fn caller_room_id(ctx: &ViewContext) -> u64 {
+    ctx.db
+        .player()
+        .identity()
+        .find(ctx.sender())
+        .map_or(0, |p| p.room_id)
+}
+
+/// The caller's own `Player` row.
+#[spacetimedb::view(accessor = my_player, public)]
+pub fn my_player(ctx: &ViewContext) -> Option<Player> {
+    ctx.db.player().identity().find(ctx.sender())
+}
+
+/// The caller's current room, including its join code.
+#[spacetimedb::view(accessor = my_room, public)]
+pub fn my_room(ctx: &ViewContext) -> Option<Room> {
+    match caller_room_id(ctx) {
+        0 => None,
+        id => ctx.db.room().id().find(id),
+    }
+}
+
+/// Members of the caller's current room.
+#[spacetimedb::view(accessor = my_room_member, public)]
+pub fn my_room_member(ctx: &ViewContext) -> Vec<RoomMember> {
+    match caller_room_id(ctx) {
+        0 => Vec::new(),
+        id => ctx.db.room_member().room_id().filter(&id).collect(),
+    }
+}
+
+/// Live physics state for the caller's current match.
+#[spacetimedb::view(accessor = my_match_bunny, public)]
+pub fn my_match_bunny(ctx: &ViewContext) -> Vec<MatchBunny> {
+    match caller_room_id(ctx) {
+        0 => Vec::new(),
+        id => ctx.db.match_bunny().room_id().filter(&id).collect(),
+    }
+}
+
+/// Kill events for the caller's current match.
+#[spacetimedb::view(accessor = my_kill_event, public)]
+pub fn my_kill_event(ctx: &ViewContext) -> Vec<KillEvent> {
+    match caller_room_id(ctx) {
+        0 => Vec::new(),
+        id => ctx.db.kill_event().room_id().filter(&id).collect(),
+    }
+}
+
+/// Public rooms currently accepting players, without join codes or host identities.
+#[spacetimedb::view(accessor = public_room, public)]
+pub fn public_room(ctx: &ViewContext) -> Vec<PublicRoom> {
+    ctx.db
+        .room()
+        .status()
+        .filter(&STATUS_WAITING)
+        .filter(|r| r.is_public)
+        .map(|r| PublicRoom {
+            id: r.id,
+            name: r.name,
+            win_mode: r.win_mode,
+            win_target: r.win_target,
+            member_count: ctx.db.room_member().room_id().filter(&r.id).count() as u8,
+        })
+        .collect()
 }
 
 /// Module initialization hook.

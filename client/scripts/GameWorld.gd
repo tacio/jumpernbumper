@@ -4,6 +4,7 @@ extends Node2D
 ## particle bursts (gore/fur/puffs/water droplets), SFX triggers, MatchHUD, and ESC pause menu.
 
 const BUNNY_SHEET_TEX: Texture2D = preload("res://assets/sprites/bunny_sheet.png")
+const ROBOT_BUNNY_SHEET_TEX: Texture2D = preload("res://assets/sprites/robot_bunny_sheet.png")
 const PARTICLES_TEX: Texture2D = preload("res://assets/sprites/particles.png")
 
 const SPRITE_OFFSET := Vector2(7.0, 6.0)
@@ -145,12 +146,13 @@ func _sync_bunny_state(id: String, bd: Dictionary) -> void:
 	var alive := bool(bd.get("alive", true))
 	var on_ground := bool(bd.get("on_ground", false))
 	var in_water := bool(bd.get("in_water", false))
+	var is_bot := bool(bd.get("is_bot", false))
 	var target_pos := Vector2(bx, by) + SPRITE_OFFSET
 
 	if not _bunny_nodes.has(id):
 		var sp := Sprite2D.new()
 		sp.name = "Bunny_%d" % slot
-		sp.texture = BUNNY_SHEET_TEX
+		sp.texture = ROBOT_BUNNY_SHEET_TEX if is_bot else BUNNY_SHEET_TEX
 		sp.region_enabled = true
 		sp.centered = true
 		sp.region_rect = Rect2(0.0, float(slot * 16), 16.0, 16.0)
@@ -461,6 +463,8 @@ func _toggle_pause() -> void:
 
 func _set_paused(paused: bool) -> void:
 	_pause_overlay.visible = paused
+	if paused:
+		_resume_btn.call_deferred("grab_focus")
 
 
 func _on_leave_pressed() -> void:

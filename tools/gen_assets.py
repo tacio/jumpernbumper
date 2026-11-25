@@ -307,6 +307,241 @@ def generate_bunny_sheet() -> pathlib.Path:
     return out_path
 
 
+# Robot bunny frames (16x16): antenna on top, glowing visor, riveted steel chest.
+# Additional palette keys:
+# A = antenna tip / LED glow
+# V = dark visor frame
+# L = glowing LED eye
+# M = brushed steel chest / mechanical trim
+ROBOT_BUNNY_FRAMES: List[List[str]] = [
+    # Frame 0: idle1
+    [
+        "....OO..OO..AO..",
+        "...OMEOOMEO.O...",
+        "...OHBOOHBO.O...",
+        "...OHBOOHBO.....",
+        "...OBBOOBBO.....",
+        "...OOHHHHHO.....",
+        "..OHBBBBBBBO....",
+        "..OHBBBBVVLLO...",
+        "..OBBBBBVVVVO...",
+        "...OBBBBBBBO....",
+        "..OOBBMMMBO.....",
+        ".OMOBBMMMBBO....",
+        ".OOOBSSMMBSO....",
+        "...OSSSSSSSO....",
+        "...OBBO.OBBO....",
+        "...OOOO.OOOO....",
+    ],
+    # Frame 1: idle2 (antenna blink + 1px bob)
+    [
+        "............OO..",
+        "....OO..OO..O...",
+        "...OMEOOMEO.....",
+        "...OHBOOHBO.....",
+        "...OBBOOBBO.....",
+        "...OOHHHHHO.....",
+        "..OHBBBBBBBO....",
+        "..OHBBBBVVVVO...",
+        "..OBBBBBVVLLO...",
+        "...OBBBBBBBO....",
+        ".OOOBBMMMBO.....",
+        "OMMOBBMMMBBO....",
+        ".OOOBSSMMBSO....",
+        "...OSSSSSSSO....",
+        "...OBBO.OBBO....",
+        "...OOOO.OOOO....",
+    ],
+    # Frame 2: run1
+    [
+        "............AO..",
+        "..OO..OO....O...",
+        ".OMEOOMEO.......",
+        "..OHBOOHBO......",
+        "...OBBOOBBO.....",
+        "....OOHHHHHO....",
+        "...OHBBBBBBBO...",
+        "...OHBBBBVVLLO..",
+        "...OBBBBBVVVVO..",
+        "....OBBBBBBBO...",
+        "..OOBBMMMBOO....",
+        ".OMOBBMMMBBO....",
+        ".OOOBSSMMBSO....",
+        "...OSSSSSSSO....",
+        "..OBBO..OBBO....",
+        "..OOOO...OOOO...",
+    ],
+    # Frame 3: run2
+    [
+        "................",
+        "............AO..",
+        "..OO..OO....O...",
+        ".OMEOOMEO.......",
+        "..OHBOOHBO......",
+        "...OOHHHHHO.....",
+        "..OHBBBBBBBO....",
+        "..OHBBBBVVLLO...",
+        "..OBBBBBVVVVO...",
+        "...OBBBBBBBO....",
+        ".OOOBBMMMBOO....",
+        "OMMOBBMMMBBO....",
+        ".OOOBSSMMBSO....",
+        "...OSSSSSSSO....",
+        "....OBBOOBBO....",
+        "....OOOOOOOO....",
+    ],
+    # Frame 4: run3
+    [
+        "....OO..OO..AO..",
+        "...OMEOOMEO.O...",
+        "...OHBOOHBO.....",
+        "....OBBOOBBO....",
+        "....OOHHHHHO....",
+        "...OHBBBBBBBO...",
+        "...OHBBBBVVLLO..",
+        "...OBBBBBVVVVO..",
+        "....OBBBBBBBO...",
+        "..OOBBMMMBOO....",
+        ".OMOBBMMMBBO....",
+        ".OOOBSSMMBSO....",
+        "...OSSSSSSSO....",
+        "..OBSO...OBBO...",
+        ".OBBO.....OBBO..",
+        ".OOOO.....OOOO..",
+    ],
+    # Frame 5: jump
+    [
+        "...OO..OO...AO..",
+        "..OMEOOMEO..O...",
+        "..OHBOOHBO......",
+        "...OBBOOBBO.....",
+        "...OOHHHHHO.....",
+        "..OHBBBBBBBO....",
+        "..OHBBBBVVLLO...",
+        "..OBBBBBVVVVO...",
+        "...OBBBBBBBO....",
+        "..OOBBMMMBOO....",
+        ".OMOBBMMMBBO....",
+        ".OOOBSSMMBSO....",
+        "...OSSSSSSSO....",
+        "...OBBO..OBBO...",
+        "...OOOO...OOOO..",
+        "................",
+    ],
+    # Frame 6: fall
+    [
+        "..OO....OO..AO..",
+        ".OMEO..OMEO.O...",
+        "..OHBO.OHBO.....",
+        "...OBBOOBBO.....",
+        "...OOHHHHHO.....",
+        "..OHBBBBBBBO....",
+        "..OHBBBBVVLLO...",
+        "..OBBBBBVVVVO...",
+        "...OBBBBBBBO....",
+        "..OOBBMMMBOO....",
+        ".OMOBBMMMBBO....",
+        ".OOOBSSMMBSO....",
+        "...OSSSSSSSO....",
+        "..OBBO..OBBO....",
+        "..OOOO..OOOO....",
+        "................",
+    ],
+    # Frame 7: swim
+    [
+        "................",
+        "............AO..",
+        "..OO..OO....O...",
+        ".OMEOOMEO.......",
+        "..OHBOOHBO......",
+        "...OOHHHHHO.....",
+        "..OHBBBBBBBO....",
+        "..OHBBBBVVLLO...",
+        "..OBBBBBVVVVO...",
+        ".OOOBBBBBBBO....",
+        "OMMOBBMMMMBBO...",
+        ".OOOBSSMMBSOO...",
+        "..OBBSSSSSSBO...",
+        "..OOOO..OOOO....",
+        "................",
+        "................",
+    ],
+]
+
+ROBOT_PALETTES: List[Tuple[str, Dict[str, RGBA]]] = [
+    (
+        "Robo-Dott",
+        {
+            "O": (20, 22, 28, 255),
+            "B": (146, 102, 72, 255),
+            "H": (196, 152, 118, 255),
+            "S": (92, 62, 46, 255),
+            "M": (176, 184, 198, 255),
+            "E": (96, 220, 255, 255),
+            "V": (24, 30, 44, 255),
+            "L": (255, 92, 92, 255),
+            "A": (255, 92, 92, 255),
+        },
+    ),
+    (
+        "Robo-Jiffy",
+        {
+            "O": (22, 22, 26, 255),
+            "B": (212, 168, 56, 255),
+            "H": (246, 214, 112, 255),
+            "S": (152, 110, 32, 255),
+            "M": (188, 194, 206, 255),
+            "E": (96, 220, 255, 255),
+            "V": (24, 30, 44, 255),
+            "L": (92, 255, 160, 255),
+            "A": (92, 255, 160, 255),
+        },
+    ),
+    (
+        "Robo-Fizz",
+        {
+            "O": (22, 24, 34, 255),
+            "B": (196, 204, 218, 255),
+            "H": (240, 244, 252, 255),
+            "S": (132, 142, 164, 255),
+            "M": (162, 174, 194, 255),
+            "E": (96, 220, 255, 255),
+            "V": (24, 30, 44, 255),
+            "L": (88, 228, 255, 255),
+            "A": (88, 228, 255, 255),
+        },
+    ),
+    (
+        "Robo-Mijji",
+        {
+            "O": (16, 20, 32, 255),
+            "B": (88, 128, 184, 255),
+            "H": (138, 178, 228, 255),
+            "S": (54, 82, 128, 255),
+            "M": (176, 186, 204, 255),
+            "E": (255, 196, 72, 255),
+            "V": (20, 26, 40, 255),
+            "L": (255, 196, 72, 255),
+            "A": (255, 196, 72, 255),
+        },
+    ),
+]
+
+
+def generate_robot_bunny_sheet() -> pathlib.Path:
+    """Generate `client/assets/sprites/robot_bunny_sheet.png` (128x64, 4x8 @ 16x16)."""
+    SPRITES_DIR.mkdir(parents=True, exist_ok=True)
+    sheet = Image.new("RGBA", (128, 64), (0, 0, 0, 0))
+    for row_idx, (_name, palette) in enumerate(ROBOT_PALETTES):
+        for col_idx, frame_rows in enumerate(ROBOT_BUNNY_FRAMES):
+            sprite = _render_ascii_sprite(frame_rows, palette, 16, 16)
+            sheet.paste(sprite, (col_idx * 16, row_idx * 16))
+    out_path = SPRITES_DIR / "robot_bunny_sheet.png"
+    sheet.save(out_path)
+    return out_path
+
+
+
 # ---------------------------------------------------------------------------
 # 3. Meadow Tileset (128x32: 8 cols x 2 rows @ 16x16)
 # ---------------------------------------------------------------------------
@@ -1164,6 +1399,7 @@ def generate_sfx() -> List[pathlib.Path]:
 def main() -> None:
     synced = sync_shared_json()
     bunny_path = generate_bunny_sheet()
+    robot_bunny_path = generate_robot_bunny_sheet()
     tileset_path = generate_tileset()
     bg_path = generate_meadow_bg()
     particles_path = generate_particles()
@@ -1173,7 +1409,7 @@ def main() -> None:
     for p in synced:
         print(f"  - {p.relative_to(ROOT_DIR)}")
     print("[gen_assets] Generated PNG assets:")
-    for p in (bunny_path, tileset_path, bg_path, particles_path):
+    for p in (bunny_path, robot_bunny_path, tileset_path, bg_path, particles_path):
         print(f"  - {p.relative_to(ROOT_DIR)}")
     print(f"[gen_assets] Generated {len(sfx_paths)} WAV SFX:")
     for p in sfx_paths:

@@ -1,0 +1,123 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.7.2-stable"
+  GODOT_TEMPLATE_DIR: "4.7.2.stable"
+
+jobs:
+  test:
+    name: Rust Tests & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server
+      - name: Run unit tests
+        run: cargo test --manifest-path server/Cargo.toml
+      - name: Run clippy
+        run: cargo clippy --manifest-path server/Cargo.toml -- -D warnings
+
+  export:
+    name: Export (${{ matrix.target }})
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux
+            preset: "Linux"
+            export_path: "build/linux/jumpernbumper.x86_64"
+            artifact_name: "jumpernbumper-linux-x86_64"
+          - target: windows
+            preset: "Windows Desktop"
+            export_path: "build/windows/jumpernbumper.exe"
+            artifact_name: "jumpernbumper-windows-x86_64"
+          - target: macos
+            preset: "macOS"
+            export_path: "build/macos/jumpernbumper.zip"
+            artifact_name: "jumpernbumper-macos-universal"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot binaries and export templates
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: |
+            .godot-ci
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}
+
+      - name: Download Godot ${{ env.GODOT_VERSION }} & export templates
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .godot-ci ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_DIR }}
+          curl -fSL -o .godot-ci/godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64.zip"
+          unzip -q -o .godot-ci/godot.zip -d .godot-ci
+          mv .godot-ci/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64 .godot-ci/godot
+          chmod +x .godot-ci/godot
+          rm -f .godot-ci/godot.zip
+
+          curl -fSL -o .godot-ci/templates.tpz \
+            "https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}/Godot_v${{ env.GODOT_VERSION }}_export_templates.tpz"
+          unzip -q -o .godot-ci/templates.tpz -d .godot-ci/tpl_tmp
+          mv .godot-ci/tpl_tmp/templates/* ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_DIR }}/
+          rm -rf .godot-ci/templates.tpz .godot-ci/tpl_tmp
+
+      - name: Import Godot project
+        run: |
+          ./.godot-ci/godot --headless --path client --import || true
+
+      - name: Export ${{ matrix.target }}
+        run: |
+          mkdir -p "client/$(dirname "${{ matrix.export_path }}")" dist
+          ./.godot-ci/godot --headless --path client --export-release "${{ matrix.preset }}" "${{ matrix.export_path }}"
+
+      - name: Package archive
+        run: |
+          if [ "${{ matrix.target }}" = "linux" ]; then
+            tar -C client/build/linux -czf "dist/${{ matrix.artifact_name }}.tar.gz" .
+          elif [ "${{ matrix.target }}" = "windows" ]; then
+            (cd client/build/windows && zip -r "../../dist/${{ matrix.artifact_name }}.zip" .)
+            mv client/dist/${{ matrix.artifact_name }}.zip dist/ 2>/dev/null || true
+          elif [ "${{ matrix.target }}" = "macos" ]; then
+            cp client/build/macos/jumpernbumper.zip "dist/${{ matrix.artifact_name }}.zip"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/*
+
+  release:
+    name: Publish GitHub Release
+    needs: export
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

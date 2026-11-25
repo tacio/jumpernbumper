@@ -6,8 +6,8 @@
 //! ## Public Table Column Order (for `TransactionUpdate` positional array decoding)
 //! 1. `player`: `["identity", "nickname", "connected", "room_id"]`
 //! 2. `room`: `["id", "code", "name", "is_public", "host_identity", "status", "win_mode", "win_target", "mut_low_gravity", "mut_pogo", "mut_jetpack", "gore_enabled", "tick_count", "elapsed_ms", "winner_slot"]`
-//! 3. `room_member`: `["identity", "room_id", "slot", "nickname", "ready", "kills", "deaths"]`
-//! 4. `match_bunny`: `["identity", "room_id", "slot", "x", "y", "vx", "vy", "facing", "alive", "respawn_ticks", "invuln_ticks", "on_ground", "in_water", "on_ice", "prev_jump", "input_bits", "last_seq"]`
+//! 3. `room_member`: `["identity", "room_id", "slot", "nickname", "ready", "kills", "deaths", "is_bot"]`
+//! 4. `match_bunny`: `["identity", "room_id", "slot", "x", "y", "vx", "vy", "facing", "alive", "respawn_ticks", "invuln_ticks", "on_ground", "in_water", "on_ice", "prev_jump", "input_bits", "last_seq", "is_bot"]`
 //! 5. `kill_event`: `["id", "room_id", "tick", "killer_slot", "victim_slot", "x", "y"]`
 //!
 //! ## Status & Enum Constants
@@ -99,6 +99,7 @@ pub struct RoomMember {
     pub ready: bool,
     pub kills: u32,
     pub deaths: u32,
+    pub is_bot: bool,
 }
 
 /// Authoritative physics state for an active bunny in an `InProgress` room.
@@ -124,6 +125,7 @@ pub struct MatchBunny {
     pub prev_jump: bool,
     pub input_bits: u8,
     pub last_seq: u32,
+    pub is_bot: bool,
 }
 
 /// Discrete stomp kill event emitted during `match_tick` for kill feed and VFX/SFX.
@@ -266,6 +268,7 @@ pub fn create_room(ctx: &ReducerContext, name: String, is_public: bool) -> Resul
         ready: true,
         kills: 0,
         deaths: 0,
+        is_bot: false,
     });
 
     Ok(())
@@ -354,6 +357,75 @@ pub fn toggle_ready(ctx: &ReducerContext) -> Result<(), String> {
     Ok(())
 }
 
+/// Adds a server-controlled robot bunny into an open `slot` (`0..=3`) (host only, `Waiting` room only).
+#[spacetimedb::reducer]
+pub fn add_bot(ctx: &ReducerContext, slot: u8) -> Result<(), String> {
+    if slot >= MAX_ROOM_PLAYERS as u8 {
+        return Err("Bunny slot must be between 0 and 3".to_string());
+    }
+    let caller = ctx.sender();
+    let (room, _member) = require_caller_room_and_member(ctx, caller)?;
+    if room.host_identity != caller {
+        return Err("Only the room host can add bots".to_string());
+    }
+    if room.status != STATUS_WAITING {
+        return Err("Cannot add bots after match has started".to_string());
+    }
+
+    let members: Vec<RoomMember> = ctx
+        .db
+        .room_member()
+        .room_id()
+        .filter(&room.id)
+        .collect();
+    if members.len() >= MAX_ROOM_PLAYERS {
+        return Err("Room is full (max 4 players)".to_string());
+    }
+    if members.iter().any(|m| m.slot == slot) {
+        return Err(format!("Bunny slot {slot} is already taken"));
+    }
+
+    let bot_id = bot_identity(room.id, slot);
+    ctx.db.room_member().insert(RoomMember {
+        identity: bot_id,
+        room_id: room.id,
+        slot,
+        nickname: bot_name_for_slot(slot),
+        ready: true,
+        kills: 0,
+        deaths: 0,
+        is_bot: true,
+    });
+    Ok(())
+}
+
+/// Removes a robot bunny from `slot` (`0..=3`) (host only, `Waiting` room only).
+#[spacetimedb::reducer]
+pub fn remove_bot(ctx: &ReducerContext, slot: u8) -> Result<(), String> {
+    if slot >= MAX_ROOM_PLAYERS as u8 {
+        return Err("Bunny slot must be between 0 and 3".to_string());
+    }
+    let caller = ctx.sender();
+    let (room, _member) = require_caller_room_and_member(ctx, caller)?;
+    if room.host_identity != caller {
+        return Err("Only the room host can remove bots".to_string());
+    }
+    if room.status != STATUS_WAITING {
+        return Err("Cannot remove bots after match has started".to_string());
+    }
+
+    let bot_member = ctx
+        .db
+        .room_member()
+        .room_id()
+        .filter(&room.id)
+        .find(|m| m.slot == slot && m.is_bot)
+        .ok_or_else(|| format!("No bot in slot {slot}"))?;
+
+    ctx.db.room_member().identity().delete(bot_member.identity);
+    Ok(())
+}
+
 /// Updates match rules and mutators (host only, `Waiting` room only).
 #[spacetimedb::reducer]
 pub fn update_room_settings(
@@ -438,6 +510,7 @@ pub fn start_match(ctx: &ReducerContext) -> Result<(), String> {
         member.deaths = 0;
         let slot = member.slot;
         let identity = member.identity;
+        let is_bot = member.is_bot;
         ctx.db.room_member().identity().update(member);
 
         let [sx, sy] = arena.spawn_points[slot as usize % arena.spawn_points.len()];
@@ -459,6 +532,7 @@ pub fn start_match(ctx: &ReducerContext) -> Result<(), String> {
             prev_jump: false,
             input_bits: 0,
             last_seq: 0,
+            is_bot,
         });
     }
 
@@ -546,6 +620,14 @@ pub fn match_tick(ctx: &ReducerContext, _schedule: MatchTickSchedule) {
             pogo: room.mut_pogo,
             jetpack: room.mut_jetpack,
         };
+
+        let snapshot = sim_states.clone();
+        for (idx, row) in bunny_rows.iter().enumerate() {
+            if row.is_bot {
+                sim_states[idx].input_bits =
+                    sim::compute_bot_input(&snapshot[idx], &snapshot, &arena, &constants, &mutators);
+            }
+        }
 
         let next_tick = room.tick_count + 1;
         let next_elapsed_ms = ((next_tick * 1000) / hz) as u32;
@@ -731,8 +813,23 @@ fn join_room_internal(ctx: &ReducerContext, room: Room) -> Result<(), String> {
         ready: false,
         kills: 0,
         deaths: 0,
+        is_bot: false,
     });
     Ok(())
+}
+
+fn bot_identity(room_id: u64, slot: u8) -> Identity {
+    let mut bytes = [0u8; 32];
+    bytes[0] = 0xB0;
+    bytes[1] = 0x7B;
+    bytes[2] = slot;
+    bytes[8..16].copy_from_slice(&room_id.to_le_bytes());
+    Identity::from_byte_array(bytes)
+}
+
+fn bot_name_for_slot(slot: u8) -> String {
+    const NAMES: [&str; 4] = ["[BOT] Dott", "[BOT] Jiffy", "[BOT] Fizz", "[BOT] Mijji"];
+    NAMES[slot as usize % NAMES.len()].to_string()
 }
 
 fn remove_player_from_room(ctx: &ReducerContext, identity: Identity) {
@@ -764,7 +861,10 @@ fn remove_player_from_room(ctx: &ReducerContext, identity: Identity) {
         .room_id()
         .filter(&room_id)
         .collect();
-    if remaining.is_empty() {
+    if remaining.is_empty() || remaining.iter().all(|m| m.is_bot) {
+        for bot in remaining {
+            ctx.db.room_member().identity().delete(bot.identity);
+        }
         clear_room_match_entities(ctx, room_id);
         ctx.db.room().id().delete(room_id);
         maybe_stop_match_schedule(ctx);
@@ -772,8 +872,10 @@ fn remove_player_from_room(ctx: &ReducerContext, identity: Identity) {
     }
 
     remaining.sort_by_key(|m| m.slot);
-    if room.host_identity == identity {
-        room.host_identity = remaining[0].identity;
+    if room.host_identity == identity
+        && let Some(next_host) = remaining.iter().find(|m| !m.is_bot)
+    {
+        room.host_identity = next_host.identity;
     }
 
     if room.status == STATUS_IN_PROGRESS && remaining.len() == 1 {
@@ -1001,6 +1103,7 @@ mod tests {
             ready: true,
             kills,
             deaths,
+            is_bot: false,
         }
     }
 
@@ -1051,6 +1154,7 @@ mod tests {
             prev_jump: false,
             input_bits: 2,
             last_seq: 9,
+            is_bot: false,
         };
         let mut sim_state = match_bunny_to_sim(&mb);
         assert!(!bunny_state_differs(&mb, &sim_state));

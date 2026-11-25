@@ -268,6 +268,14 @@ func toggle_ready() -> int:
 	return _call("toggle_ready", [])
 
 
+func add_bot(slot: int) -> int:
+	return _call("add_bot", [slot])
+
+
+func remove_bot(slot: int) -> int:
+	return _call("remove_bot", [slot])
+
+
 func update_room_settings(
 	win_mode: int,
 	win_target: int,

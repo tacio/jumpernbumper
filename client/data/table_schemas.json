@@ -30,7 +30,8 @@
       "nickname",
       "ready",
       "kills",
-      "deaths"
+      "deaths",
+      "is_bot"
     ],
     "match_bunny": [
       "identity",
@@ -49,7 +50,8 @@
       "on_ice",
       "prev_jump",
       "input_bits",
-      "last_seq"
+      "last_seq",
+      "is_bot"
     ],
     "kill_event": [
       "id",

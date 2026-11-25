@@ -57,12 +57,14 @@ func refresh() -> void:
 
 	if winner_slot >= 0 and winner_slot <= 3:
 		_winner_icon.visible = true
-		_winner_icon.texture = RetroUI.make_bunny_atlas(winner_slot, 5)
+		var winner_is_bot := false
 		var wname := RetroUI.BUNNY_NAMES[winner_slot]
 		for m in members:
 			if int(m.get("slot", -1)) == winner_slot:
 				wname = "%s (%s)" % [str(m.get("nickname", wname)), wname]
+				winner_is_bot = bool(m.get("is_bot", false))
 				break
+		_winner_icon.texture = RetroUI.make_bunny_atlas(winner_slot, 5, winner_is_bot)
 		_winner_label.text = "WINNER: %s" % wname
 	else:
 		_winner_icon.visible = false
@@ -86,19 +88,22 @@ func refresh() -> void:
 			str(md.get("nickname", RetroUI.BUNNY_NAMES[slot])),
 			str(int(md.get("kills", 0))),
 			str(int(md.get("deaths", 0))),
-			RetroUI.BUNNY_COLORS[slot]
+			RetroUI.BUNNY_COLORS[slot],
+			bool(md.get("is_bot", false))
 		)
 		_standings_vbox.add_child(row)
 
 	if is_host:
 		_return_btn.disabled = false
 		_return_btn.text = "RETURN TO LOBBY"
+		_return_btn.call_deferred("grab_focus")
 	else:
 		_return_btn.disabled = true
 		_return_btn.text = "WAIT FOR HOST"
+		_leave_btn.call_deferred("grab_focus")
 
 
-func _make_row(rank: String, slot: int, pname: String, kills: String, deaths: String, color: Color) -> HBoxContainer:
+func _make_row(rank: String, slot: int, pname: String, kills: String, deaths: String, color: Color, is_bot: bool = false) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 
@@ -112,7 +117,7 @@ func _make_row(rank: String, slot: int, pname: String, kills: String, deaths: St
 		var icon := TextureRect.new()
 		icon.custom_minimum_size = Vector2(14, 14)
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.texture = RetroUI.make_bunny_atlas(slot, 0)
+		icon.texture = RetroUI.make_bunny_atlas(slot, 0, is_bot)
 		row.add_child(icon)
 	else:
 		var spacer := Control.new()

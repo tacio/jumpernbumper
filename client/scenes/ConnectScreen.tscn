@@ -31,10 +31,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -146.0
-offset_top = -98.0
-offset_right = 146.0
-offset_bottom = 98.0
+offset_left = -160.0
+offset_top = -106.0
+offset_right = 160.0
+offset_bottom = 106.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -63,12 +63,12 @@ layout_mode = 2
 theme_override_constants/separation = 6
 
 [node name="NickLabel" type="Label" parent="CenterPanel/VBox/NickRow"]
-custom_minimum_size = Vector2(58, 0)
+custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "NICKNAME"
 
 [node name="NicknameInput" type="LineEdit" parent="CenterPanel/VBox/NickRow"]
-custom_minimum_size = Vector2(200, 18)
+custom_minimum_size = Vector2(210, 18)
 layout_mode = 2
 size_flags_horizontal = 3
 max_length = 16
@@ -79,25 +79,34 @@ layout_mode = 2
 theme_override_constants/separation = 6
 
 [node name="UrlLabel" type="Label" parent="CenterPanel/VBox/UrlRow"]
-custom_minimum_size = Vector2(58, 0)
+custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "SERVER WS"
 
 [node name="UrlInput" type="LineEdit" parent="CenterPanel/VBox/UrlRow"]
-custom_minimum_size = Vector2(200, 18)
+custom_minimum_size = Vector2(210, 18)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "ws://127.0.0.1:3000/v1/database/jumpernbumper/subscribe"
 placeholder_text = "ws://127.0.0.1:3000/v1/database/jumpernbumper/subscribe"
 
-[node name="ConnectButton" type="Button" parent="CenterPanel/VBox"]
-custom_minimum_size = Vector2(120, 20)
+[node name="ButtonRow" type="HBoxContainer" parent="CenterPanel/VBox"]
 layout_mode = 2
-size_flags_horizontal = 4
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="ConnectButton" type="Button" parent="CenterPanel/VBox/ButtonRow"]
+custom_minimum_size = Vector2(104, 20)
+layout_mode = 2
 text = "CONNECT"
 
+[node name="ControlsButton" type="Button" parent="CenterPanel/VBox/ButtonRow"]
+custom_minimum_size = Vector2(96, 20)
+layout_mode = 2
+text = "CONTROLS"
+
 [node name="ErrorLabel" type="Label" parent="CenterPanel/VBox"]
-custom_minimum_size = Vector2(260, 16)
+custom_minimum_size = Vector2(280, 16)
 layout_mode = 2
 text = ""
 horizontal_alignment = 1

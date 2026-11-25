@@ -911,6 +911,117 @@ fn move_toward(current: f32, target: f32, max_delta: f32) -> f32 {
     }
 }
 
+/// Computes arcade bot input bitmask (`InputBits`) for `bunny` against `others`,
+/// inspired by the classic Jump 'n Bump `cpu_move()` heuristic:
+/// - Tracks the nearest alive opponent.
+/// - Evades opponents directly overhead within stomp range.
+/// - Releases jump on ground so edge-triggered jumps re-fire cleanly.
+/// - Jumps over solid obstacles ahead and swims/uses jetpack when appropriate.
+pub fn compute_bot_input(
+    bunny: &BunnyState,
+    others: &[BunnyState],
+    arena: &Arena,
+    constants: &PhysicsConstants,
+    mutators: &Mutators,
+) -> u8 {
+    if !bunny.alive {
+        return 0;
+    }
+
+    let mut nearest: Option<&BunnyState> = None;
+    let mut nearest_dist_sq = f32::MAX;
+    for other in others {
+        if other.slot == bunny.slot || !other.alive {
+            continue;
+        }
+        let dx = other.x - bunny.x;
+        let dy = other.y - bunny.y;
+        let dist_sq = dx * dx + dy * dy;
+        if dist_sq < nearest_dist_sq {
+            nearest_dist_sq = dist_sq;
+            nearest = Some(other);
+        }
+    }
+
+    let Some(target) = nearest else {
+        return 0;
+    };
+
+    let dx = target.x - bunny.x;
+    let dy_above = bunny.y - target.y; // > 0 when target is higher than bot
+
+    // X-axis movement: chase target, evade if target is directly above, avoid jitter.
+    let mut move_left = dx < 0.0;
+    let mut move_right = dx > 0.0;
+
+    let evading_overhead = dy_above > 0.0 && dy_above < 32.0 && dx > -32.0 && dx < 40.0;
+    if evading_overhead {
+        move_left = !move_left;
+        move_right = !move_right;
+    } else if dx > -4.0 && dx < 12.0 {
+        move_left = false;
+        move_right = false;
+    }
+
+    // Y-axis movement: tile-aware jumping and hazard/obstacle handling.
+    let ts = arena.tile_size;
+    let tile_at_px = |px: f32, py: f32| -> TileKind {
+        arena.tile_at((px / ts).floor() as isize, (py / ts).floor() as isize)
+    };
+    let is_obstacle = |t: TileKind| -> bool { t.is_solid() };
+
+    let dir_offset = if move_right {
+        constants.bunny_width + 2.0
+    } else if move_left {
+        -4.0
+    } else {
+        constants.bunny_width * 0.5
+    };
+
+    let jump = if bunny.in_water {
+        // Swim upward to escape water.
+        true
+    } else if bunny.on_ground && bunny.prev_jump && !mutators.jetpack {
+        // Release jump on ground so the next tick's edge-triggered jump fires.
+        false
+    } else if is_obstacle(tile_at_px(bunny.x + constants.bunny_width * 0.5, bunny.y - 8.0)) {
+        // Ceiling directly above; don't bonk.
+        false
+    } else if (move_left || move_right)
+        && bunny.x > 16.0
+        && bunny.x < constants.width - 24.0
+        && is_obstacle(tile_at_px(bunny.x + dir_offset, bunny.y + 4.0))
+    {
+        // Solid obstacle directly ahead: jump over it.
+        true
+    } else if bunny.prev_jump
+        && (move_left || move_right)
+        && is_obstacle(tile_at_px(bunny.x + dir_offset, bunny.y + 12.0))
+    {
+        // Keep holding jump while clearing a 2-tile ledge.
+        true
+    } else if evading_overhead {
+        // Stay low and run away when an opponent is poised to stomp.
+        false
+    } else if mutators.jetpack {
+        target.y < bunny.y - 8.0
+    } else {
+        target.y <= bunny.y
+    };
+
+    let mut bits = 0u8;
+    if move_left {
+        bits |= InputBits::LEFT;
+    }
+    if move_right {
+        bits |= InputBits::RIGHT;
+    }
+    if jump {
+        bits |= InputBits::JUMP;
+    }
+    bits
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -73,6 +73,7 @@ func _ready() -> void:
 	if client != null:
 		client.state_updated.connect(refresh)
 	refresh()
+	_ready_btn.call_deferred("grab_focus")
 
 
 func _process(delta: float) -> void:
@@ -121,9 +122,11 @@ func refresh() -> void:
 		var card: Dictionary = _slot_cards[slot]
 		var panel: PanelContainer = card["panel"]
 		var host_lbl: Label = card["host_lbl"]
+		var icon: TextureRect = card["icon"]
 		var nick_lbl: Label = card["nick_lbl"]
 		var ready_lbl: Label = card["ready_lbl"]
 		var btn: Button = card["claim_btn"]
+		var bot_btn: Button = card["bot_btn"]
 
 		if by_slot.has(slot):
 			var md: Dictionary = by_slot[slot]
@@ -131,24 +134,49 @@ func refresh() -> void:
 			var is_me := (occ_id == my_id)
 			var is_occ_host := (occ_id == host_id)
 			var is_ready := bool(md.get("ready", false))
+			var is_bot := bool(md.get("is_bot", false))
 
-			host_lbl.text = "HOST" if is_occ_host else ""
+			icon.texture = RetroUI.make_bunny_atlas(slot, 0, is_bot)
+			if is_bot:
+				host_lbl.text = "BOT"
+				host_lbl.add_theme_color_override("font_color", Color(0.55, 0.90, 1.0, 1.0))
+			else:
+				host_lbl.text = "HOST" if is_occ_host else ""
+				host_lbl.add_theme_color_override("font_color", Color(0.98, 0.84, 0.28, 1.0))
+
 			nick_lbl.text = str(md.get("nickname", "Bunny"))
 			ready_lbl.text = "READY" if is_ready else "WAIT"
 			ready_lbl.add_theme_color_override(
 				"font_color",
 				Color(0.42, 0.92, 0.48, 1.0) if is_ready else Color(0.95, 0.72, 0.28, 1.0)
 			)
-			btn.text = "YOU" if is_me else "USED"
-			btn.disabled = true
+
+			if is_bot and is_host:
+				btn.visible = false
+				bot_btn.visible = true
+				bot_btn.disabled = false
+				bot_btn.text = "KICK BOT"
+				bot_btn.add_theme_stylebox_override("normal", RetroUI.make_button_style(Color(0.55, 0.20, 0.20, 1.0)))
+			else:
+				btn.visible = true
+				btn.text = "YOU" if is_me else ("BOT" if is_bot else "USED")
+				btn.disabled = true
+				bot_btn.visible = false
+
 			var border_col := Color(0.98, 0.84, 0.28, 1.0) if is_me else RetroUI.BUNNY_COLORS[slot]
 			panel.add_theme_stylebox_override("panel", RetroUI.make_card_style(border_col))
 		else:
+			icon.texture = RetroUI.make_bunny_atlas(slot, 0, false)
 			host_lbl.text = ""
 			nick_lbl.text = "OPEN"
 			ready_lbl.text = ""
+			btn.visible = true
 			btn.text = "PICK"
 			btn.disabled = false
+			bot_btn.visible = is_host
+			bot_btn.disabled = false
+			bot_btn.text = "+ BOT"
+			bot_btn.add_theme_stylebox_override("normal", RetroUI.make_button_style(Color(0.20, 0.36, 0.52, 1.0)))
 			panel.add_theme_stylebox_override("panel", RetroUI.make_card_style(Color(0.25, 0.34, 0.42, 1.0)))
 
 	_sync_settings_ui(room, is_host)
@@ -171,11 +199,14 @@ func refresh() -> void:
 func _sync_empty_preview() -> void:
 	for slot in range(4):
 		var card: Dictionary = _slot_cards[slot]
+		card["icon"].texture = RetroUI.make_bunny_atlas(slot, 0, false)
 		card["host_lbl"].text = "HOST" if slot == 0 else ""
 		card["nick_lbl"].text = "OPEN"
 		card["ready_lbl"].text = ""
+		card["claim_btn"].visible = true
 		card["claim_btn"].text = "PICK"
 		card["claim_btn"].disabled = true
+		card["bot_btn"].visible = false
 
 
 func _sync_settings_ui(room: Dictionary, is_host: bool) -> void:
@@ -231,49 +262,65 @@ func _build_slot_cards() -> void:
 		bname.text = RetroUI.BUNNY_NAMES[slot].to_upper()
 		bname.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		bname.add_theme_color_override("font_color", RetroUI.BUNNY_COLORS[slot])
-		bname.add_theme_font_size_override("font_size", 7)
+		bname.add_theme_font_size_override("font_size", 8)
 		top.add_child(bname)
 
 		var host_lbl := Label.new()
 		host_lbl.text = ""
 		host_lbl.add_theme_color_override("font_color", Color(0.98, 0.84, 0.28, 1.0))
-		host_lbl.add_theme_font_size_override("font_size", 7)
+		host_lbl.add_theme_font_size_override("font_size", 8)
 		top.add_child(host_lbl)
 
 		var icon := TextureRect.new()
 		icon.custom_minimum_size = Vector2(20, 20)
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.texture = RetroUI.make_bunny_atlas(slot, 0)
+		icon.texture = RetroUI.make_bunny_atlas(slot, 0, false)
 		vbox.add_child(icon)
 
 		var nick_lbl := Label.new()
 		nick_lbl.text = "OPEN"
 		nick_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		nick_lbl.clip_text = true
-		nick_lbl.add_theme_font_size_override("font_size", 7)
+		nick_lbl.add_theme_font_size_override("font_size", 8)
 		vbox.add_child(nick_lbl)
 
 		var ready_lbl := Label.new()
 		ready_lbl.text = ""
 		ready_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		ready_lbl.add_theme_font_size_override("font_size", 7)
+		ready_lbl.add_theme_font_size_override("font_size", 8)
 		vbox.add_child(ready_lbl)
+
+		var btn_row := HBoxContainer.new()
+		btn_row.add_theme_constant_override("separation", 3)
+		vbox.add_child(btn_row)
 
 		var claim_btn := Button.new()
 		claim_btn.text = "PICK"
+		claim_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		claim_btn.custom_minimum_size = Vector2(0, 15)
-		claim_btn.add_theme_font_size_override("font_size", 7)
+		claim_btn.add_theme_font_size_override("font_size", 8)
 		var target_slot := slot
 		claim_btn.pressed.connect(func() -> void: _on_select_slot(target_slot))
-		vbox.add_child(claim_btn)
+		btn_row.add_child(claim_btn)
+
+		var bot_btn := Button.new()
+		bot_btn.text = "+ BOT"
+		bot_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bot_btn.custom_minimum_size = Vector2(0, 15)
+		bot_btn.add_theme_font_size_override("font_size", 8)
+		bot_btn.visible = false
+		bot_btn.pressed.connect(func() -> void: _on_bot_btn_pressed(target_slot))
+		btn_row.add_child(bot_btn)
 
 		_slots_row.add_child(panel)
 		_slot_cards.append({
 			"panel": panel,
 			"host_lbl": host_lbl,
+			"icon": icon,
 			"nick_lbl": nick_lbl,
 			"ready_lbl": ready_lbl,
 			"claim_btn": claim_btn,
+			"bot_btn": bot_btn,
 		})
 
 
@@ -281,6 +328,20 @@ func _on_select_slot(slot: int) -> void:
 	var client := RetroUI.get_client(self)
 	if client != null:
 		client.select_bunny_slot(slot)
+
+
+func _on_bot_btn_pressed(slot: int) -> void:
+	var client := RetroUI.get_client(self)
+	if client == null:
+		return
+	var room_id := int(_current_room.get("id", 0))
+	var members: Array = client.get_room_members(room_id)
+	for m in members:
+		var md: Dictionary = m
+		if int(md.get("slot", -1)) == slot and bool(md.get("is_bot", false)):
+			client.remove_bot(slot)
+			return
+	client.add_bot(slot)
 
 
 func _on_copy_pressed() -> void:

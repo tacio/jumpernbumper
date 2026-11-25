@@ -37,6 +37,7 @@ func _ready() -> void:
 		client.state_updated.connect(refresh)
 		client.reducer_error.connect(_on_reducer_error)
 	refresh()
+	_create_btn.call_deferred("grab_focus")
 
 
 func show_error(msg: String) -> void:

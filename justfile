@@ -76,6 +76,25 @@ export-macos:
     mkdir -p client/build/macos
     "{{godot}}" --headless --path client --export-release "macOS" build/macos/jumpernbumper.zip
 
+# Package Linux release archive into dist/
+package-linux: export-linux
+    mkdir -p dist
+    tar -C client/build/linux -czf dist/jumpernbumper-linux-x86_64.tar.gz .
+
+# Package Windows release archive into dist/
+package-windows: export-windows
+    mkdir -p dist
+    (cd client/build/windows && zip -r ../../../dist/jumpernbumper-windows-x86_64.zip .)
+
+# Package macOS release archive into dist/
+package-macos: export-macos
+    mkdir -p dist
+    cp client/build/macos/jumpernbumper.zip dist/jumpernbumper-macos-universal.zip
+
+# Export and package release archives for Linux, Windows, and macOS into dist/
+package-all: package-linux package-windows package-macos
+    @ls -lh dist/
+
 # Clean Rust build artifacts, Godot exports, and local SpacetimeDB data
 clean:
-    rm -rf server/target client/build .spacetime-data
+    rm -rf server/target client/build dist .spacetime-data

@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Online multiplayer arena platformer (stomp rival bunnies' heads). Godot 4.7.2 GDScript client + SpacetimeDB 2.16 Rust server module. Up to 4 players per room (slots 0–3), with optional server-controlled bot bunnies.
 
+Player-facing docs live in `README.md`; contributor docs in `docs/DEVELOPMENT.md`. Keep both accurate when changing gameplay, controls, connection flow, or the release process.
+
 ## Commands
 
 All workflows go through `just` (see `justfile`). Tool paths come from env vars with machine-specific defaults: `GODOT_BIN`, `SPACETIME_BIN`, `STDB_DB_NAME` (default `jumpernbumper`), `STDB_LISTEN_ADDR` (default `127.0.0.1:3000`).

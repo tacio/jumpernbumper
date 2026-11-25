@@ -1,0 +1,47 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="ScreenContainer" type="Node" parent="."]
+
+[node name="BannerLayer" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="BannerPanel" type="PanelContainer" parent="BannerLayer"]
+visible = false
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -24.0
+offset_right = -8.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="HBox" type="HBoxContainer" parent="BannerLayer/BannerPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BannerLabel" type="Label" parent="BannerLayer/BannerPanel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Error"
+clip_text = true
+
+[node name="CloseButton" type="Button" parent="BannerLayer/BannerPanel/HBox"]
+custom_minimum_size = Vector2(18, 14)
+layout_mode = 2
+text = "X"

@@ -1,0 +1,125 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/RoomBrowserScreen.gd" id="1_browser"]
+[ext_resource type="Texture2D" path="res://assets/bg/meadow_bg.png" id="2_bg"]
+
+[node name="RoomBrowserScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_browser")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+stretch_mode = 0
+
+[node name="MainPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="HeaderBar" type="HBoxContainer" parent="MainPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PlayerLabel" type="Label" parent="MainPanel/VBox/HeaderBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "PLAYER: Bunny"
+
+[node name="DisconnectButton" type="Button" parent="MainPanel/VBox/HeaderBar"]
+custom_minimum_size = Vector2(70, 18)
+layout_mode = 2
+text = "DISCONNECT"
+
+[node name="JoinCodeBar" type="HBoxContainer" parent="MainPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CodeLabel" type="Label" parent="MainPanel/VBox/JoinCodeBar"]
+layout_mode = 2
+text = "JOIN CODE:"
+
+[node name="CodeInput" type="LineEdit" parent="MainPanel/VBox/JoinCodeBar"]
+custom_minimum_size = Vector2(58, 18)
+layout_mode = 2
+max_length = 5
+placeholder_text = "ABCDE"
+
+[node name="JoinCodeButton" type="Button" parent="MainPanel/VBox/JoinCodeBar"]
+custom_minimum_size = Vector2(48, 18)
+layout_mode = 2
+text = "JOIN"
+
+[node name="StatusLabel" type="Label" parent="MainPanel/VBox/JoinCodeBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = ""
+clip_text = true
+
+[node name="CreateBar" type="HBoxContainer" parent="MainPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CreateLabel" type="Label" parent="MainPanel/VBox/CreateBar"]
+layout_mode = 2
+text = "NEW ROOM:"
+
+[node name="RoomNameInput" type="LineEdit" parent="MainPanel/VBox/CreateBar"]
+custom_minimum_size = Vector2(120, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+max_length = 32
+placeholder_text = "Meadow Brawl"
+
+[node name="PublicCheck" type="CheckBox" parent="MainPanel/VBox/CreateBar"]
+layout_mode = 2
+button_pressed = true
+text = "Public"
+
+[node name="CreateButton" type="Button" parent="MainPanel/VBox/CreateBar"]
+custom_minimum_size = Vector2(58, 18)
+layout_mode = 2
+text = "CREATE"
+
+[node name="RoomsHeader" type="Label" parent="MainPanel/VBox"]
+layout_mode = 2
+text = "PUBLIC WAITING ROOMS (0)"
+
+[node name="RoomsScroll" type="ScrollContainer" parent="MainPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RoomListVBox" type="VBoxContainer" parent="MainPanel/VBox/RoomsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="EmptyLabel" type="Label" parent="MainPanel/VBox/RoomsScroll/RoomListVBox"]
+layout_mode = 2
+text = "No public rooms waiting. Create one above or join by code!"
+horizontal_alignment = 1
+autowrap_mode = 3

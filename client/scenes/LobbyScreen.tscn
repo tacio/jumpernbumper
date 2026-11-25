@@ -1,0 +1,178 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/LobbyScreen.gd" id="1_lobby"]
+[ext_resource type="Texture2D" path="res://assets/bg/meadow_bg.png" id="2_bg"]
+
+[node name="LobbyScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_lobby")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+stretch_mode = 0
+
+[node name="MainPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TopBar" type="HBoxContainer" parent="MainPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="RoomNameLabel" type="Label" parent="MainPanel/VBox/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Meadow Lobby"
+clip_text = true
+
+[node name="VisBadgeLabel" type="Label" parent="MainPanel/VBox/TopBar"]
+layout_mode = 2
+text = "[PUBLIC]"
+
+[node name="CodeLabel" type="Label" parent="MainPanel/VBox/TopBar"]
+layout_mode = 2
+text = "CODE: -----"
+
+[node name="CopyCodeButton" type="Button" parent="MainPanel/VBox/TopBar"]
+custom_minimum_size = Vector2(42, 16)
+layout_mode = 2
+text = "COPY"
+
+[node name="LeaveButton" type="Button" parent="MainPanel/VBox/TopBar"]
+custom_minimum_size = Vector2(44, 16)
+layout_mode = 2
+text = "LEAVE"
+
+[node name="SlotsRow" type="HBoxContainer" parent="MainPanel/VBox"]
+custom_minimum_size = Vector2(0, 88)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SettingsPanel" type="PanelContainer" parent="MainPanel/VBox"]
+layout_mode = 2
+
+[node name="SettingsVBox" type="VBoxContainer" parent="MainPanel/VBox/SettingsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="WinRow" type="HBoxContainer" parent="MainPanel/VBox/SettingsPanel/SettingsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="WinLabel" type="Label" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/WinRow"]
+layout_mode = 2
+text = "WIN:"
+
+[node name="WinKillsButton" type="Button" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/WinRow"]
+custom_minimum_size = Vector2(40, 16)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "KILLS"
+
+[node name="WinTimeButton" type="Button" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/WinRow"]
+custom_minimum_size = Vector2(36, 16)
+layout_mode = 2
+toggle_mode = true
+text = "TIME"
+
+[node name="TargetMinusButton" type="Button" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/WinRow"]
+custom_minimum_size = Vector2(18, 16)
+layout_mode = 2
+text = "-"
+
+[node name="TargetValueLabel" type="Label" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/WinRow"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+text = "10"
+horizontal_alignment = 1
+
+[node name="TargetPlusButton" type="Button" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/WinRow"]
+custom_minimum_size = Vector2(18, 16)
+layout_mode = 2
+text = "+"
+
+[node name="Preset0Button" type="Button" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/WinRow"]
+custom_minimum_size = Vector2(28, 16)
+layout_mode = 2
+text = "5"
+
+[node name="Preset1Button" type="Button" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/WinRow"]
+custom_minimum_size = Vector2(30, 16)
+layout_mode = 2
+text = "10"
+
+[node name="Preset2Button" type="Button" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/WinRow"]
+custom_minimum_size = Vector2(30, 16)
+layout_mode = 2
+text = "20"
+
+[node name="MutatorRow" type="HBoxContainer" parent="MainPanel/VBox/SettingsPanel/SettingsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="MutLabel" type="Label" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/MutatorRow"]
+layout_mode = 2
+text = "MODS:"
+
+[node name="LowGravCheck" type="CheckBox" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/MutatorRow"]
+layout_mode = 2
+text = "Low Grav"
+
+[node name="PogoCheck" type="CheckBox" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/MutatorRow"]
+layout_mode = 2
+text = "Pogo"
+
+[node name="JetpackCheck" type="CheckBox" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/MutatorRow"]
+layout_mode = 2
+text = "Jetpack"
+
+[node name="GoreCheck" type="CheckBox" parent="MainPanel/VBox/SettingsPanel/SettingsVBox/MutatorRow"]
+layout_mode = 2
+button_pressed = true
+text = "Gore"
+
+[node name="FooterBar" type="HBoxContainer" parent="MainPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ReadyButton" type="Button" parent="MainPanel/VBox/FooterBar"]
+custom_minimum_size = Vector2(98, 20)
+layout_mode = 2
+text = "READY UP"
+
+[node name="ReadySummaryLabel" type="Label" parent="MainPanel/VBox/FooterBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0/0 Ready"
+horizontal_alignment = 1
+
+[node name="StartMatchButton" type="Button" parent="MainPanel/VBox/FooterBar"]
+custom_minimum_size = Vector2(98, 20)
+layout_mode = 2
+text = "START MATCH"

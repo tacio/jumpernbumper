@@ -1,0 +1,14 @@
+# Rust / SpacetimeDB build & local runtime state
+/server/target/
+/.spacetime-data/
+spacetime.local.json
+
+# Godot cache & exports
+/client/.godot/
+/client/.import/
+/client/export/
+/client/build/
+
+# Python caches
+__pycache__/
+*.pyc

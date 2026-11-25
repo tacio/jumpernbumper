@@ -1,0 +1,85 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/VictoryPodiumScreen.gd" id="1_podium"]
+[ext_resource type="Texture2D" path="res://assets/bg/meadow_bg.png" id="2_bg"]
+
+[node name="VictoryPodiumScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_podium")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+stretch_mode = 0
+
+[node name="CenterPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -168.0
+offset_top = -104.0
+offset_right = 168.0
+offset_bottom = 104.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="WinnerRow" type="HBoxContainer" parent="CenterPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="WinnerIcon" type="TextureRect" parent="CenterPanel/VBox/WinnerRow"]
+custom_minimum_size = Vector2(22, 22)
+layout_mode = 2
+stretch_mode = 5
+
+[node name="WinnerLabel" type="Label" parent="CenterPanel/VBox/WinnerRow"]
+layout_mode = 2
+text = "WINNER!"
+
+[node name="SubLabel" type="Label" parent="CenterPanel/VBox"]
+layout_mode = 2
+text = "Match Complete"
+horizontal_alignment = 1
+
+[node name="StandingsPanel" type="PanelContainer" parent="CenterPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StandingsVBox" type="VBoxContainer" parent="CenterPanel/VBox/StandingsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ButtonRow" type="HBoxContainer" parent="CenterPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ReturnLobbyButton" type="Button" parent="CenterPanel/VBox/ButtonRow"]
+custom_minimum_size = Vector2(126, 20)
+layout_mode = 2
+text = "RETURN TO LOBBY"
+
+[node name="LeaveRoomButton" type="Button" parent="CenterPanel/VBox/ButtonRow"]
+custom_minimum_size = Vector2(96, 20)
+layout_mode = 2
+text = "LEAVE ROOM"

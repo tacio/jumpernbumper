@@ -1,0 +1,80 @@
+{
+  "tables": {
+    "player": [
+      "identity",
+      "nickname",
+      "connected",
+      "room_id"
+    ],
+    "room": [
+      "id",
+      "code",
+      "name",
+      "is_public",
+      "host_identity",
+      "status",
+      "win_mode",
+      "win_target",
+      "mut_low_gravity",
+      "mut_pogo",
+      "mut_jetpack",
+      "gore_enabled",
+      "tick_count",
+      "elapsed_ms",
+      "winner_slot"
+    ],
+    "room_member": [
+      "identity",
+      "room_id",
+      "slot",
+      "nickname",
+      "ready",
+      "kills",
+      "deaths"
+    ],
+    "match_bunny": [
+      "identity",
+      "room_id",
+      "slot",
+      "x",
+      "y",
+      "vx",
+      "vy",
+      "facing",
+      "alive",
+      "respawn_ticks",
+      "invuln_ticks",
+      "on_ground",
+      "in_water",
+      "on_ice",
+      "prev_jump",
+      "input_bits",
+      "last_seq"
+    ],
+    "kill_event": [
+      "id",
+      "room_id",
+      "tick",
+      "killer_slot",
+      "victim_slot",
+      "x",
+      "y"
+    ]
+  },
+  "enums": {
+    "room_status": {
+      "Waiting": 0,
+      "InProgress": 1,
+      "Finished": 2
+    },
+    "win_mode": {
+      "Kills": 0,
+      "Time": 1
+    },
+    "input_bits": {
+      "LEFT": 1,
+      "RIGHT": 2,
+      "JUMP": 4
+    }
+  }
+}

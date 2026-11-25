@@ -1,0 +1,104 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ConnectScreen.gd" id="1_connect"]
+[ext_resource type="Texture2D" path="res://assets/bg/meadow_bg.png" id="2_bg"]
+
+[node name="ConnectScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_connect")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+stretch_mode = 0
+
+[node name="CenterPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -146.0
+offset_top = -98.0
+offset_right = 146.0
+offset_bottom = 98.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="CenterPanel/VBox"]
+layout_mode = 2
+text = "JUMPER 'N BUMPER"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="CenterPanel/VBox"]
+layout_mode = 2
+text = "ONLINE MEADOW MAYHEM"
+horizontal_alignment = 1
+
+[node name="BunnyPreviewRow" type="HBoxContainer" parent="CenterPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="NickRow" type="HBoxContainer" parent="CenterPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="NickLabel" type="Label" parent="CenterPanel/VBox/NickRow"]
+custom_minimum_size = Vector2(58, 0)
+layout_mode = 2
+text = "NICKNAME"
+
+[node name="NicknameInput" type="LineEdit" parent="CenterPanel/VBox/NickRow"]
+custom_minimum_size = Vector2(200, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+max_length = 16
+placeholder_text = "Enter nickname (1-16)"
+
+[node name="UrlRow" type="HBoxContainer" parent="CenterPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="UrlLabel" type="Label" parent="CenterPanel/VBox/UrlRow"]
+custom_minimum_size = Vector2(58, 0)
+layout_mode = 2
+text = "SERVER WS"
+
+[node name="UrlInput" type="LineEdit" parent="CenterPanel/VBox/UrlRow"]
+custom_minimum_size = Vector2(200, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ws://127.0.0.1:3000/v1/database/jumpernbumper/subscribe"
+placeholder_text = "ws://127.0.0.1:3000/v1/database/jumpernbumper/subscribe"
+
+[node name="ConnectButton" type="Button" parent="CenterPanel/VBox"]
+custom_minimum_size = Vector2(120, 20)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "CONNECT"
+
+[node name="ErrorLabel" type="Label" parent="CenterPanel/VBox"]
+custom_minimum_size = Vector2(260, 16)
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
